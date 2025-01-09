@@ -95,7 +95,19 @@ def process_user_input(user_question):
     docs = new_db.similarity_search(user_question)
     chain = get_conversational_chain()
     response = chain({"input_documents": docs, "question": user_question}, return_only_outputs=True)
-    return response["output_text"]
+    response_text = response["output_text"]
+ 
+    # Extract URLs from the response
+    urls = [url for url in response_text.split() if url.startswith("https://drive.google.com")]
+ 
+    # Remove duplicates by converting the list to a set and back to a list
+    unique_urls = list(set(urls))
+ 
+    # Prepare a response string with unique URLs
+    unique_url_text = "\n".join(unique_urls) if unique_urls else "No unique URLs found in the response."
+ 
+    return unique_url_text
+ 
  
 def fetch_image_with_retry(url, retries=3):
     for attempt in range(retries):
@@ -129,7 +141,7 @@ if uploaded_file:
     st.sidebar.dataframe(df)
  
     # Tabs for functionalities
-    tab2, tab1 = st.tabs(["Free Text search", "Chat with GeminiAI"])
+    tab2, tab1 = st.tabs(["Filter based Search", "Chat with GeminiAI"])
  
     with tab1:
         st.header("Chat with CSV using Gemini ")
@@ -141,32 +153,38 @@ if uploaded_file:
                 response = process_user_input(user_question)
                 st.write("Reply: ", response)
  
-                # Extract image URLs from the DataFrame (assuming URLs are in the "URL" column)
-                if "URL" in df.columns:
-                    image_urls = df["URL"].dropna().tolist()
- 
-                    # Display images in a grid layout
+                # Extract image URLs from the response
+                image_urls = [url for url in response.split() if url.startswith("http") and
+                            ("drive.google.com" in url or url.endswith(('.jpg', '.png', '.jpeg')))]
+                # Remove duplicates by converting the list to a set and back to a list
+                image_urls = list(set(image_urls))
+                if image_urls:
                     st.write("### Related Images")
-                    cols = st.columns(3)  # Display 3 images per row
+                    cols = st.columns(3)  # Create a grid layout (3 images per row)
  
                     for i, url in enumerate(image_urls):
-                        with cols[i % 3]:  # Use modulus to create rows of 3
+                        with cols[i % 3]:  # Place images in columns
                             if "drive.google.com" in url:
+                                # Convert Google Drive URL to direct link
                                 view_link, direct_link = get_drive_view_url_and_direct_link(url)
                                 if direct_link:
                                     image_content = fetch_image_with_retry(direct_link)
                                     if image_content:
                                         image = Image.open(io.BytesIO(image_content))
                                         st.image(image, use_container_width=True)
+                                        # Provide the view link as a clickable hyperlink
                                         if view_link:
-                                            st.markdown(f'<a href="{view_link}" target="_blank" style="color: blue;">Open in Google Drive</a>', unsafe_allow_html=True)
+                                            st.markdown(
+                                                f'<a href="{view_link}" target="_blank" style="color: blue;">Open in Google Drive</a>',
+                                                unsafe_allow_html=True,
+                                            )
                             else:
+                                # Display direct image URLs
                                 st.image(url, use_container_width=True)
                                 st.markdown(f'<a href="{url}" target="_blank" style="color: blue;">{url}</a>', unsafe_allow_html=True)
  
- 
     with tab2:
-        st.header("Free Text search")
+        st.header("Filter based Search")
         # Initialize session state
         if "selected_player" not in st.session_state:
             st.session_state.selected_player = None
@@ -197,7 +215,7 @@ if uploaded_file:
                 st.session_state.players.remove(player)
        
         # Input area for adding players via dropdown
-        st.write("##### Select a player name")
+        st.write("##### Name")
         col1 ,col2, col3 = st.columns([3,1,1])
         with col1:
             st.selectbox(
@@ -209,7 +227,7 @@ if uploaded_file:
             )
        
         # Display added players as tags in a single line
-        st.write("##### Selected Players")
+        st.write("##### Selection List")
         if st.session_state.players:
             for player in st.session_state.players:
                 # Create a button with "✖️" to remove player
