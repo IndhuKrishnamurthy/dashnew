@@ -224,7 +224,7 @@ if uploaded_file:
         with col5:
             Action = st.selectbox(
                 "ACTION",
-                ["All", "Discussion", "Celebration", "Batting", "Award","poses","interview","posing", "celebrating"],
+                ["Unspecified", "Award Ceremony", "Batting", "Bowling", "Catching", "Cheering", "Departure",  "Eating", "Event", "Greeting", "Holding Signs", "Hugging", "Laughing",     "Observing", "Playing", "Posing", "Practicing", "Receiving", "Running",     "Smiling", "Speaking", "Standing", "Sitting", "Warm Up", "Walking" ],
                 label_visibility="visible",
             )
         with col6:
